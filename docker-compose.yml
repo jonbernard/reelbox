@@ -1,9 +1,6 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runner
+    image: ghcr.io/jonbernard/scroll-viewer:latest
     container_name: scroll-viewer-app
     ports:
       - "3000:3000"
@@ -12,8 +9,24 @@ services:
       - VIDEO_BASE_PATH=/videos
       - MYFAVETT_EXPORT_PATH=/videos
     volumes:
-      # Mount your myfaveTT export folder here
-      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/videos:ro
+      - ${EXPORT_PATH}:/videos:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - scroll-network
+
+  watcher:
+    image: ghcr.io/jonbernard/scroll-viewer:latest
+    container_name: scroll-viewer-watcher
+    command: ["npx", "tsx", "scripts/watch.ts"]
+    environment:
+      - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
+      - VIDEO_BASE_PATH=/videos
+      - MYFAVETT_EXPORT_PATH=/videos
+    volumes:
+      - ${EXPORT_PATH}:/videos:ro
     depends_on:
       db:
         condition: service_healthy
@@ -36,27 +49,6 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - scroll-network
-
-  # Optional: Run migrations/import as a one-off service
-  migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: migrator
-    container_name: scroll-viewer-migrate
-    environment:
-      - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
-      - VIDEO_BASE_PATH=/videos
-      - MYFAVETT_EXPORT_PATH=/videos
-    volumes:
-      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/videos:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    profiles:
-      - setup
     networks:
       - scroll-network
 

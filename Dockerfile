@@ -18,7 +18,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Production stage (for running the app)
+# Production stage
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -30,10 +30,21 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy necessary files from builder
+# Copy standalone app from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# Overlay full node_modules (superset — includes prisma CLI, tsx, chokidar for scripts)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy prisma schema and scripts
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
+
+# Copy entrypoint
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 # Set permissions
 RUN chown -R nextjs:nodejs /app
@@ -45,17 +56,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+ENTRYPOINT ["./entrypoint.sh"]
 CMD ["node", "server.js"]
-
-# Migration stage (for running migrations and imports)
-FROM node:20-alpine AS migrator
-
-WORKDIR /app
-
-# Copy everything needed for migrations
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/scripts ./scripts
-
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npx tsx scripts/import.ts"]
