@@ -9,11 +9,11 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
-      - VIDEO_BASE_PATH=/app/videos
-      - MYFAVETT_EXPORT_PATH=/app/videos
+      - VIDEO_BASE_PATH=/videos
+      - MYFAVETT_EXPORT_PATH=/videos
     volumes:
       # Mount your myfaveTT export folder here
-      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/app/videos:ro
+      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/videos:ro
     depends_on:
       db:
         condition: service_healthy
@@ -48,10 +48,10 @@ services:
     container_name: scroll-viewer-migrate
     environment:
       - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
-      - VIDEO_BASE_PATH=/app/videos
-      - MYFAVETT_EXPORT_PATH=/app/videos
+      - VIDEO_BASE_PATH=/videos
+      - MYFAVETT_EXPORT_PATH=/videos
     volumes:
-      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/app/videos:ro
+      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/videos:ro
     depends_on:
       db:
         condition: service_healthy

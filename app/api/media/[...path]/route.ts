@@ -3,7 +3,10 @@ import * as path from 'node:path';
 
 import { type NextRequest, NextResponse } from 'next/server';
 
-const VIDEO_BASE_PATH = process.env.VIDEO_BASE_PATH || '/app/videos';
+// IMPORTANT:
+// Keep media files OUTSIDE the Next.js project directory to avoid Turbopack tracing
+// thousands of potential files during build (e.g. when /app is the project root in Docker).
+const VIDEO_BASE_PATH = process.env.VIDEO_BASE_PATH || '/videos';
 
 export async function GET(
   request: NextRequest,

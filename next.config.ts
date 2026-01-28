@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
 
+  // Exclude media volume from output file tracing (avoids broad pattern warnings)
+  outputFileTracingExcludes: {
+    '/api/media/[...path]': ['./**/*'],
+  },
+
   // Experimental features
   experimental: {
     // Enable server actions
