@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
-import type { FeedType, Video, VideosResponse } from "@/app/lib/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type { FeedType, Video, VideosResponse } from '@/app/lib/types';
 
 interface UseVideoFeedOptions {
   type: FeedType;
@@ -20,18 +21,18 @@ export function useVideoFeed({ type, authorId, limit = 20 }: UseVideoFeedOptions
   const fetchVideos = useCallback(
     async (cursor?: string | null) => {
       const params = new URLSearchParams();
-      params.set("type", type);
-      params.set("limit", limit.toString());
-      if (authorId) params.set("authorId", authorId);
-      if (cursor) params.set("cursor", cursor);
+      params.set('type', type);
+      params.set('limit', limit.toString());
+      if (authorId) params.set('authorId', authorId);
+      if (cursor) params.set('cursor', cursor);
 
       const response = await fetch(`/api/videos?${params.toString()}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch videos");
+        throw new Error('Failed to fetch videos');
       }
       return response.json() as Promise<VideosResponse>;
     },
-    [type, authorId, limit]
+    [type, authorId, limit],
   );
 
   const loadInitial = useCallback(async () => {
@@ -45,7 +46,7 @@ export function useVideoFeed({ type, authorId, limit = 20 }: UseVideoFeedOptions
       cursorRef.current = data.nextCursor;
       setHasMore(data.nextCursor !== null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load videos");
+      setError(err instanceof Error ? err.message : 'Failed to load videos');
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +62,7 @@ export function useVideoFeed({ type, authorId, limit = 20 }: UseVideoFeedOptions
       cursorRef.current = data.nextCursor;
       setHasMore(data.nextCursor !== null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more videos");
+      setError(err instanceof Error ? err.message : 'Failed to load more videos');
     } finally {
       setIsLoadingMore(false);
     }

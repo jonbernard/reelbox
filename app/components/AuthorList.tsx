@@ -1,7 +1,10 @@
-"use client";
+'use client';
 
-import type { Author } from "@/app/lib/types";
-import { formatCount, getAvatarUrl } from "@/app/lib/utils";
+import Image from 'next/image';
+
+import type { Author } from '@/app/lib/types';
+
+import { formatCount, getAvatarUrl } from '@/app/lib/utils';
 
 interface AuthorListProps {
   authors: Author[];
@@ -12,24 +15,25 @@ interface AuthorListProps {
 
 export function AuthorList({ authors, isLoading, onSelect, onClose }: AuthorListProps) {
   return (
-    <div className="fixed inset-0 z-30 bg-black/90">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md">
       <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <h2 className="text-lg font-semibold text-white">Following</h2>
+        <div className="flex items-center justify-between border-b border-white/10 p-4 safe-area-top">
+          <div>
+            <h2 className="text-lg font-extrabold tracking-tight text-white">Creators</h2>
+            <p className="text-xs font-semibold text-white/60">Pick who to filter “Following” by</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-white hover:bg-white/10"
-            aria-label="Close"
-          >
+            className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/15 active:scale-95"
+            aria-label="Close">
             <svg
               className="h-6 w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -57,30 +61,35 @@ export function AuthorList({ authors, isLoading, onSelect, onClose }: AuthorList
                     key={author.id}
                     type="button"
                     onClick={() => onSelect(author)}
-                    className="flex w-full items-center gap-4 p-4 text-left hover:bg-white/5"
-                  >
+                    className="flex w-full items-center gap-4 p-4 text-left transition hover:bg-white/7 active:bg-white/10">
                     {avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt={author.nickname}
-                        className="h-12 w-12 rounded-full object-cover"
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full object-cover ring-1 ring-white/20"
                       />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-600 text-white">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15">
                         {author.nickname.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="flex-1 overflow-hidden">
-                      <p className="truncate font-semibold text-white">{author.nickname}</p>
-                      <p className="truncate text-sm text-gray-400">@{author.uniqueId}</p>
+                      <p className="truncate text-[15px] font-extrabold tracking-tight text-white">
+                        {author.nickname}
+                      </p>
+                      <p className="truncate text-sm font-semibold text-white/65">
+                        @{author.uniqueId}
+                      </p>
                       {author._count && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-white/45">
                           {author._count.videos} videos in library
                         </p>
                       )}
                     </div>
                     {author.followerCount && (
-                      <div className="text-right text-sm text-gray-400">
+                      <div className="text-right text-sm font-semibold text-white/60">
                         {formatCount(author.followerCount)} followers
                       </div>
                     )}

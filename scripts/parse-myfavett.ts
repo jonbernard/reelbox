@@ -1,5 +1,5 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 /**
  * Parse myfaveTT database files
@@ -85,18 +85,18 @@ function extractJsonFromJsFile(content: string): string {
   }
 
   // Also try direct JSON (for facts.json)
-  if (content.trim().startsWith("{")) {
+  if (content.trim().startsWith('{')) {
     return content;
   }
 
-  throw new Error("Could not extract JSON from file content");
+  throw new Error('Could not extract JSON from file content');
 }
 
 /**
  * Parse a myfaveTT database file
  */
 export function parseDbFile<T>(filePath: string): T {
-  const content = fs.readFileSync(filePath, "utf-8");
+  const content = fs.readFileSync(filePath, 'utf-8');
   const jsonStr = extractJsonFromJsFile(content);
   return JSON.parse(jsonStr) as T;
 }
@@ -105,19 +105,19 @@ export function parseDbFile<T>(filePath: string): T {
  * Parse all myfaveTT database files from an export directory
  */
 export function parseMyfaveTTExport(exportPath: string) {
-  const appdataPath = path.join(exportPath, "data", ".appdata");
+  const appdataPath = path.join(exportPath, 'data', '.appdata');
 
   // Parse each database file
-  const videos = parseDbFile<Record<string, VideoData>>(path.join(appdataPath, "db_videos.js"));
-  const authors = parseDbFile<Record<string, AuthorData>>(path.join(appdataPath, "db_authors.js"));
-  const texts = parseDbFile<Record<string, string>>(path.join(appdataPath, "db_texts.js"));
-  const likes = parseDbFile<LikesData>(path.join(appdataPath, "db_likes.js"));
-  const bookmarked = parseDbFile<BookmarkedData>(path.join(appdataPath, "db_bookmarked.js"));
-  const following = parseDbFile<FollowingData>(path.join(appdataPath, "db_following.js"));
+  const videos = parseDbFile<Record<string, VideoData>>(path.join(appdataPath, 'db_videos.js'));
+  const authors = parseDbFile<Record<string, AuthorData>>(path.join(appdataPath, 'db_authors.js'));
+  const texts = parseDbFile<Record<string, string>>(path.join(appdataPath, 'db_texts.js'));
+  const likes = parseDbFile<LikesData>(path.join(appdataPath, 'db_likes.js'));
+  const bookmarked = parseDbFile<BookmarkedData>(path.join(appdataPath, 'db_bookmarked.js'));
+  const following = parseDbFile<FollowingData>(path.join(appdataPath, 'db_following.js'));
 
   // Parse facts.json (plain JSON, not JS)
-  const factsPath = path.join(appdataPath, "facts.json");
-  const facts = JSON.parse(fs.readFileSync(factsPath, "utf-8")) as FactsData;
+  const factsPath = path.join(appdataPath, 'facts.json');
+  const facts = JSON.parse(fs.readFileSync(factsPath, 'utf-8')) as FactsData;
 
   return {
     videos,
@@ -139,34 +139,34 @@ export function findVideoPath(
   videoId: string,
   isLiked: boolean,
   isFavorite: boolean,
-  authorId?: string
+  authorId?: string,
 ): string | null {
-  const dataPath = path.join(exportPath, "data");
+  const dataPath = path.join(exportPath, 'data');
 
   // Check Likes folder
   if (isLiked) {
-    const likePath = path.join(dataPath, "Likes", "videos", `${videoId}.mp4`);
+    const likePath = path.join(dataPath, 'Likes', 'videos', `${videoId}.mp4`);
     if (fs.existsSync(likePath)) return likePath;
   }
 
   // Check Favorites folder
   if (isFavorite) {
-    const favPath = path.join(dataPath, "Favorites", "videos", `${videoId}.mp4`);
+    const favPath = path.join(dataPath, 'Favorites', 'videos', `${videoId}.mp4`);
     if (fs.existsSync(favPath)) return favPath;
   }
 
   // Check Following folder (requires authorId)
   if (authorId) {
-    const followPath = path.join(dataPath, "Following", authorId, "videos", `${videoId}.mp4`);
+    const followPath = path.join(dataPath, 'Following', authorId, 'videos', `${videoId}.mp4`);
     if (fs.existsSync(followPath)) return followPath;
   }
 
   // Fallback: search all Following folders
-  const followingPath = path.join(dataPath, "Following");
+  const followingPath = path.join(dataPath, 'Following');
   if (fs.existsSync(followingPath)) {
-    const authorDirs = fs.readdirSync(followingPath).filter((d) => d !== "Avatars");
+    const authorDirs = fs.readdirSync(followingPath).filter((d) => d !== 'Avatars');
     for (const dir of authorDirs) {
-      const videoPath = path.join(followingPath, dir, "videos", `${videoId}.mp4`);
+      const videoPath = path.join(followingPath, dir, 'videos', `${videoId}.mp4`);
       if (fs.existsSync(videoPath)) return videoPath;
     }
   }
@@ -182,35 +182,46 @@ export function findCoverPath(
   videoId: string,
   isLiked: boolean,
   isFavorite: boolean,
-  authorId?: string
+  authorId?: string,
 ): string | null {
-  const dataPath = path.join(exportPath, "data");
+  const dataPath = path.join(exportPath, 'data');
+  const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const candidatesFor = (baseDir: string) =>
+    exts.map((ext) => path.join(baseDir, `${videoId}${ext}`));
 
   // Check Likes folder
   if (isLiked) {
-    const likePath = path.join(dataPath, "Likes", "covers", `${videoId}.jpeg`);
-    if (fs.existsSync(likePath)) return likePath;
+    const likeDir = path.join(dataPath, 'Likes', 'covers');
+    for (const p of candidatesFor(likeDir)) {
+      if (fs.existsSync(p)) return p;
+    }
   }
 
   // Check Favorites folder
   if (isFavorite) {
-    const favPath = path.join(dataPath, "Favorites", "covers", `${videoId}.jpeg`);
-    if (fs.existsSync(favPath)) return favPath;
+    const favDir = path.join(dataPath, 'Favorites', 'covers');
+    for (const p of candidatesFor(favDir)) {
+      if (fs.existsSync(p)) return p;
+    }
   }
 
   // Check Following folder
   if (authorId) {
-    const followPath = path.join(dataPath, "Following", authorId, "covers", `${videoId}.jpeg`);
-    if (fs.existsSync(followPath)) return followPath;
+    const followDir = path.join(dataPath, 'Following', authorId, 'covers');
+    for (const p of candidatesFor(followDir)) {
+      if (fs.existsSync(p)) return p;
+    }
   }
 
   // Fallback: search all Following folders
-  const followingPath = path.join(dataPath, "Following");
+  const followingPath = path.join(dataPath, 'Following');
   if (fs.existsSync(followingPath)) {
-    const authorDirs = fs.readdirSync(followingPath).filter((d) => d !== "Avatars");
+    const authorDirs = fs.readdirSync(followingPath).filter((d) => d !== 'Avatars');
     for (const dir of authorDirs) {
-      const coverPath = path.join(followingPath, dir, "covers", `${videoId}.jpeg`);
-      if (fs.existsSync(coverPath)) return coverPath;
+      const coverDir = path.join(followingPath, dir, 'covers');
+      for (const p of candidatesFor(coverDir)) {
+        if (fs.existsSync(p)) return p;
+      }
     }
   }
 
@@ -221,8 +232,17 @@ export function findCoverPath(
  * Find avatar path for a given author ID
  */
 export function findAvatarPath(exportPath: string, authorId: string): string | null {
-  const avatarPath = path.join(exportPath, "data", "Following", "Avatars", `${authorId}.jpeg`);
-  if (fs.existsSync(avatarPath)) return avatarPath;
+  const avatarsDir = path.join(exportPath, 'data', 'Following', 'Avatars');
+  const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const prefixes = ['large_', 'small_', ''];
+
+  // Prefer large_ over small_ when both exist.
+  for (const prefix of prefixes) {
+    for (const ext of exts) {
+      const avatarPath = path.join(avatarsDir, `${prefix}${authorId}${ext}`);
+      if (fs.existsSync(avatarPath)) return avatarPath;
+    }
+  }
   return null;
 }
 
@@ -230,5 +250,5 @@ export function findAvatarPath(exportPath: string, authorId: string): string | n
  * Convert file path to a relative path suitable for serving
  */
 export function toServablePath(fullPath: string, exportPath: string): string {
-  return fullPath.replace(exportPath, "").replace(/^\/+/, "");
+  return fullPath.replace(exportPath, '').replace(/^\/+/, '');
 }

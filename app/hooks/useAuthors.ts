@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
-import type { Author, AuthorsResponse } from "@/app/lib/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from 'react';
+
+import type { Author, AuthorsResponse } from '@/app/lib/types';
 
 export function useAuthors(followingOnly = true) {
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -14,17 +15,17 @@ export function useAuthors(followingOnly = true) {
 
     try {
       const params = new URLSearchParams();
-      if (followingOnly) params.set("following", "true");
+      if (followingOnly) params.set('following', 'true');
 
       const response = await fetch(`/api/authors?${params.toString()}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch authors");
+        throw new Error('Failed to fetch authors');
       }
 
       const data = (await response.json()) as AuthorsResponse;
       setAuthors(data.authors);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load authors");
+      setError(err instanceof Error ? err.message : 'Failed to load authors');
     } finally {
       setIsLoading(false);
     }

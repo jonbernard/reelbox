@@ -1,9 +1,14 @@
-"use client";
+'use client';
 
-import type { Video } from "@/app/lib/types";
-import { getCoverUrl, getVideoUrl } from "@/app/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { VideoOverlay } from "./VideoOverlay";
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type { Video } from '@/app/lib/types';
+
+import { debugLog } from '@/app/lib/debug';
+import { formatCount, getAvatarUrl, getCoverUrl, getVideoUrl } from '@/app/lib/utils';
+
+import { VideoOverlay } from './VideoOverlay';
 
 interface VideoPlayerProps {
   video: Video;
@@ -20,32 +25,95 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
   const [showControls, setShowControls] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLiked, setIsLiked] = useState(video.isLiked);
+  const [isSaved, setIsSaved] = useState(video.isFavorite);
+  const [autoplayFallbackMuted, setAutoplayFallbackMuted] = useState(false);
 
   const videoUrl = getVideoUrl(video.videoPath);
   const coverUrl = getCoverUrl(video.coverPath);
+  const avatarUrl = getAvatarUrl(video.author.avatarPath);
+  const effectiveMuted = isMuted || autoplayFallbackMuted;
+  const effectiveMutedRef = useRef(effectiveMuted);
+
+  useEffect(() => {
+    effectiveMutedRef.current = effectiveMuted;
+  }, [effectiveMuted]);
+
+  useEffect(() => {
+    setIsLiked(video.isLiked);
+    setIsSaved(video.isFavorite);
+  }, [video.isFavorite, video.isLiked]);
 
   // Play/pause based on active state
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
+    debugLog('player', 'active effect', {
+      videoId: video.id,
+      isActive,
+      isMuted,
+      autoplayFallbackMuted,
+      effectiveMuted: effectiveMutedRef.current,
+      volume: videoEl.volume,
+      muted: videoEl.muted,
+    });
+
     if (isActive) {
-      videoEl.play().catch(() => {
-        // Autoplay might be blocked
-      });
+      const playResult = videoEl.play();
+      // In browsers this is a Promise; in some environments it may be void.
+      if (playResult && typeof (playResult as Promise<void>).catch === 'function') {
+        (playResult as Promise<void>).catch(async (err) => {
+          debugLog('player', 'play() rejected', {
+            videoId: video.id,
+            name: err instanceof Error ? err.name : undefined,
+            message: err instanceof Error ? err.message : String(err),
+            volume: videoEl.volume,
+            muted: videoEl.muted,
+            readyState: videoEl.readyState,
+            networkState: videoEl.networkState,
+          });
+
+          // If autoplay is blocked while unmuted, fall back to muted autoplay (common browser policy).
+          if (!effectiveMutedRef.current) {
+            setAutoplayFallbackMuted(true);
+            try {
+              videoEl.muted = true;
+              await videoEl.play();
+              debugLog('player', 'fallback muted autoplay ok', {
+                videoId: video.id,
+              });
+            } catch {
+              debugLog('player', 'fallback muted autoplay failed', {
+                videoId: video.id,
+              });
+              // ignore
+            }
+          }
+        });
+      }
     } else {
+      debugLog('player', 'pause inactive', { videoId: video.id });
       videoEl.pause();
       videoEl.currentTime = 0;
     }
-  }, [isActive]);
+  }, [autoplayFallbackMuted, isActive, isMuted, video.id]);
 
   // Handle mute state
   useEffect(() => {
     const videoEl = videoRef.current;
     if (videoEl) {
-      videoEl.muted = isMuted;
+      videoEl.muted = effectiveMuted;
+      if (!effectiveMuted && videoEl.volume === 0) {
+        videoEl.volume = 1;
+      }
+      debugLog('player', 'mute applied', {
+        videoId: video.id,
+        effectiveMuted,
+        volume: videoEl.volume,
+      });
     }
-  }, [isMuted]);
+  }, [effectiveMuted, video.id]);
 
   // Update progress
   useEffect(() => {
@@ -59,27 +127,50 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
     const handleLoadedMetadata = () => {
       setDuration(videoEl.duration);
       setIsLoaded(true);
+      debugLog('player', 'loadedmetadata', {
+        videoId: video.id,
+        duration: videoEl.duration,
+      });
     };
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
+    const handleError = () => {
+      debugLog('player', 'media error event', {
+        videoId: video.id,
+        errorCode: videoEl.error?.code ?? null,
+        readyState: videoEl.readyState,
+        networkState: videoEl.networkState,
+        currentSrc: videoEl.currentSrc,
+      });
+    };
 
-    videoEl.addEventListener("timeupdate", handleTimeUpdate);
-    videoEl.addEventListener("loadedmetadata", handleLoadedMetadata);
-    videoEl.addEventListener("play", handlePlay);
-    videoEl.addEventListener("pause", handlePause);
+    videoEl.addEventListener('timeupdate', handleTimeUpdate);
+    videoEl.addEventListener('loadedmetadata', handleLoadedMetadata);
+    videoEl.addEventListener('play', handlePlay);
+    videoEl.addEventListener('pause', handlePause);
+    videoEl.addEventListener('error', handleError);
 
     return () => {
-      videoEl.removeEventListener("timeupdate", handleTimeUpdate);
-      videoEl.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      videoEl.removeEventListener("play", handlePlay);
-      videoEl.removeEventListener("pause", handlePause);
+      videoEl.removeEventListener('timeupdate', handleTimeUpdate);
+      videoEl.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      videoEl.removeEventListener('play', handlePlay);
+      videoEl.removeEventListener('pause', handlePause);
+      videoEl.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [video.id]);
 
   const handleVideoToggle = useCallback(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
+
+    // A click is a user gesture; if we previously fell back to muted autoplay, clear it.
+    if (autoplayFallbackMuted) {
+      setAutoplayFallbackMuted(false);
+      if (!isMuted) {
+        videoEl.muted = false;
+      }
+    }
 
     if (videoEl.paused) {
       videoEl.play();
@@ -95,16 +186,16 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
     }, 2000);
-  }, []);
+  }, [autoplayFallbackMuted, isMuted]);
 
   const handleVideoKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === " " || e.key === "Enter") {
+      if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         handleVideoToggle();
       }
     },
-    [handleVideoToggle]
+    [handleVideoToggle],
   );
 
   const handleProgressClick = useCallback(
@@ -117,7 +208,7 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
       const percentage = x / rect.width;
       videoEl.currentTime = percentage * duration;
     },
-    [duration]
+    [duration],
   );
 
   const handleProgressKeyDown = useCallback(
@@ -126,16 +217,63 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
       if (!videoEl || !duration) return;
 
       const step = duration * 0.05; // 5% of duration
-      if (e.key === "ArrowRight") {
+      if (e.key === 'ArrowRight') {
         e.preventDefault();
         videoEl.currentTime = Math.min(videoEl.currentTime + step, duration);
-      } else if (e.key === "ArrowLeft") {
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         videoEl.currentTime = Math.max(videoEl.currentTime - step, 0);
       }
     },
-    [duration]
+    [duration],
   );
+
+  const handleMuteClick = useCallback(() => {
+    const videoEl = videoRef.current;
+    const nextMuted = !isMuted;
+
+    // Apply immediately on the element (some browsers require this in the gesture handler)
+    if (videoEl) {
+      if (!nextMuted) {
+        setAutoplayFallbackMuted(false);
+      }
+      videoEl.muted = nextMuted;
+
+      // If we're unmuting, ensure volume is audible and "re-play" in the same gesture to enable audio.
+      if (!nextMuted) {
+        if (videoEl.volume === 0) {
+          videoEl.volume = 1;
+        }
+        videoEl.play().catch(() => {
+          // Ignore; autoplay/audio policies vary by browser
+        });
+      }
+    }
+
+    onMuteToggle();
+  }, [isMuted, onMuteToggle]);
+
+  const handleShare = useCallback(async () => {
+    // Prefer native share when available; otherwise copy the direct media URL.
+    try {
+      const shareUrl = window.location.href;
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Video',
+          url: shareUrl,
+        });
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      await navigator.clipboard.writeText(videoUrl);
+    } catch {
+      // ignore
+    }
+  }, [videoUrl]);
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
 
@@ -155,19 +293,170 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
         className="h-full w-full border-0 bg-transparent p-0"
         onClick={handleVideoToggle}
         onKeyDown={handleVideoKeyDown}
-        aria-label={isPlaying ? "Pause video" : "Play video"}
-      >
+        aria-label={isPlaying ? 'Pause video' : 'Play video'}>
         <video
           ref={videoRef}
           src={videoUrl}
           className="h-full w-full object-contain"
           loop
           playsInline
-          muted={isMuted}
+          muted={effectiveMuted}
           poster={coverUrl || undefined}
           preload="metadata"
         />
       </button>
+
+      {/* Right action rail (TikTok-style) */}
+      <div className="absolute bottom-24 right-3 z-40 flex flex-col items-center gap-3 safe-area-bottom">
+        {/* Profile bubble */}
+        <button
+          type="button"
+          className="group relative h-11 w-11 overflow-hidden rounded-full ring-2 ring-white/80 transition active:scale-95"
+          aria-label={`@${video.author.uniqueId}`}
+          title={`@${video.author.uniqueId}`}>
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={video.author.nickname}
+              fill
+              sizes="48px"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-white/10 text-sm font-bold text-white">
+              {video.author.nickname.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="absolute inset-0 bg-white/10 opacity-0 transition group-hover:opacity-100" />
+        </button>
+
+        {/* Like */}
+        <button
+          type="button"
+          onClick={() => setIsLiked((v) => !v)}
+          className="flex flex-col items-center gap-1 text-white active:scale-95"
+          aria-label={isLiked ? 'Unlike' : 'Like'}>
+          <div
+            className={`flex h-11 w-11 items-center justify-center rounded-full bg-black/25 backdrop-blur-sm transition ${
+              isLiked ? 'text-pink-500' : 'text-white'
+            }`}>
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          </div>
+          <span className="text-[11px] font-semibold text-white/90">
+            {formatCount(
+              (video.diggCount ?? 0) +
+                (isLiked && !video.isLiked ? 1 : 0) -
+                (!isLiked && video.isLiked ? 1 : 0),
+            )}
+          </span>
+        </button>
+
+        {/* Save */}
+        <button
+          type="button"
+          onClick={() => setIsSaved((v) => !v)}
+          className="flex flex-col items-center gap-1 text-white active:scale-95"
+          aria-label={isSaved ? 'Unsave' : 'Save'}>
+          <div
+            className={`flex h-11 w-11 items-center justify-center rounded-full bg-black/25 backdrop-blur-sm transition ${
+              isSaved ? 'text-yellow-400' : 'text-white'
+            }`}>
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true">
+              <path d="M6 2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4a2 2 0 0 1 2-2Z" />
+            </svg>
+          </div>
+          <span className="text-[11px] font-semibold text-white/90">
+            {isSaved ? 'Saved' : 'Save'}
+          </span>
+        </button>
+
+        {/* Share */}
+        <button
+          type="button"
+          onClick={handleShare}
+          className="flex flex-col items-center gap-1 text-white/95 active:scale-95"
+          aria-label="Share">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/25 backdrop-blur-sm">
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true">
+              <path
+                d="M14 9l7 3-7 3V9Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M14 12H9a4 4 0 0 0-4 4v2"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <span className="text-[11px] font-semibold text-white/90">Share</span>
+        </button>
+
+        {/* Mute */}
+        <button
+          type="button"
+          onClick={handleMuteClick}
+          className="flex flex-col items-center gap-1 text-white active:scale-95"
+          aria-label={isMuted ? 'Unmute' : 'Mute'}>
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/25 backdrop-blur-sm">
+            {isMuted ? (
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                />
+              </svg>
+            )}
+          </div>
+          <span className="text-[11px] font-semibold text-white/90">
+            {isMuted ? 'Muted' : 'Sound'}
+          </span>
+        </button>
+      </div>
 
       {/* Play/Pause indicator */}
       {showControls && (
@@ -178,8 +467,7 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
                 className="h-12 w-12 text-white"
                 fill="currentColor"
                 viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
+                aria-hidden="true">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
               </svg>
             ) : (
@@ -187,8 +475,7 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
                 className="h-12 w-12 text-white"
                 fill="currentColor"
                 viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
+                aria-hidden="true">
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
@@ -196,55 +483,9 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
         </div>
       )}
 
-      {/* Mute button */}
-      <button
-        type="button"
-        onClick={onMuteToggle}
-        className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2"
-        aria-label={isMuted ? "Unmute" : "Mute"}
-      >
-        {isMuted ? (
-          <svg
-            className="h-6 w-6 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
-            />
-          </svg>
-        ) : (
-          <svg
-            className="h-6 w-6 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-            />
-          </svg>
-        )}
-      </button>
-
       {/* Progress bar */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-1 cursor-pointer bg-white/30"
+        className="absolute bottom-[env(safe-area-inset-bottom,0px)] left-0 right-0 h-1 cursor-pointer bg-white/30"
         onClick={handleProgressClick}
         onKeyDown={handleProgressKeyDown}
         role="slider"
@@ -252,8 +493,7 @@ export function VideoPlayer({ video, isActive, isMuted, onMuteToggle }: VideoPla
         aria-label="Video progress"
         aria-valuenow={Math.round(progressPercent)}
         aria-valuemin={0}
-        aria-valuemax={100}
-      >
+        aria-valuemax={100}>
         <div
           className="h-full bg-white transition-[width] duration-100"
           style={{ width: `${progressPercent}%` }}

@@ -1,25 +1,26 @@
-import { prisma } from "@/app/lib/prisma";
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from 'next/server';
+
+import { prisma } from '@/app/lib/prisma';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const type = searchParams.get("type") || "all";
-  const authorId = searchParams.get("authorId");
-  const cursor = searchParams.get("cursor");
-  const limit = Math.min(Number.parseInt(searchParams.get("limit") || "20"), 50);
+  const type = searchParams.get('type') || 'all';
+  const authorId = searchParams.get('authorId');
+  const cursor = searchParams.get('cursor');
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') || '20', 10), 50);
 
   try {
     const where: Record<string, unknown> = {};
 
     // Filter by type
     switch (type) {
-      case "liked":
+      case 'liked':
         where.isLiked = true;
         break;
-      case "favorite":
+      case 'favorite':
         where.isFavorite = true;
         break;
-      case "following":
+      case 'following':
         where.isFollowing = true;
         break;
       // 'all' has no filter
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
       where,
       take: limit + 1,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { createTime: "desc" },
+      orderBy: { createTime: 'desc' },
       include: {
         author: {
           select: {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     let nextCursor: string | null = null;
     if (videos.length > limit) {
       const nextItem = videos.pop();
-      nextCursor = nextItem!.id;
+      nextCursor = nextItem ? nextItem.id : null;
     }
 
     return NextResponse.json({
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       nextCursor,
     });
   } catch (error) {
-    console.error("Error fetching videos:", error);
-    return NextResponse.json({ error: "Failed to fetch videos" }, { status: 500 });
+    console.error('Error fetching videos:', error);
+    return NextResponse.json({ error: 'Failed to fetch videos' }, { status: 500 });
   }
 }

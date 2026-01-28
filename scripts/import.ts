@@ -1,11 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+
 import {
   findAvatarPath,
   findCoverPath,
   findVideoPath,
   parseMyfaveTTExport,
   toServablePath,
-} from "./parse-myfavett";
+} from './parse-myfavett';
 
 const prisma = new PrismaClient();
 
@@ -13,23 +14,23 @@ async function main() {
   const exportPath = process.env.MYFAVETT_EXPORT_PATH;
 
   if (!exportPath) {
-    console.error("Error: MYFAVETT_EXPORT_PATH environment variable is not set");
+    console.error('Error: MYFAVETT_EXPORT_PATH environment variable is not set');
     process.exit(1);
   }
 
-  console.log(`Importing from: ${exportPath}`);
+  console.info(`Importing from: ${exportPath}`);
 
   // Create sync log entry
   const syncLog = await prisma.syncLog.create({
     data: {
-      type: "manual",
-      status: "started",
+      type: 'manual',
+      status: 'started',
     },
   });
 
   try {
     // Parse the export
-    console.log("Parsing myfaveTT export...");
+    console.info('Parsing myfaveTT export...');
     const data = parseMyfaveTTExport(exportPath);
 
     // Get sets for quick lookup
@@ -42,7 +43,7 @@ async function main() {
     let videosUpdated = 0;
 
     // Import authors
-    console.log("Importing authors...");
+    console.info('Importing authors...');
     const authorEntries = Object.entries(data.authors);
     for (const [authorId, authorData] of authorEntries) {
       const uniqueIds = authorData.uniqueIds || [];
@@ -91,10 +92,10 @@ async function main() {
         authorsAdded++;
       }
     }
-    console.log(`Processed ${authorEntries.length} authors (${authorsAdded} new)`);
+    console.info(`Processed ${authorEntries.length} authors (${authorsAdded} new)`);
 
     // Import videos
-    console.log("Importing videos...");
+    console.info('Importing videos...');
     const videoEntries = Object.entries(data.videos);
 
     for (const [videoId, videoData] of videoEntries) {
@@ -108,7 +109,7 @@ async function main() {
         videoId,
         isLiked,
         isFavorite,
-        videoData.authorId
+        videoData.authorId,
       );
 
       // Skip if video file doesn't exist
@@ -124,7 +125,7 @@ async function main() {
         videoId,
         isLiked,
         isFavorite,
-        videoData.authorId
+        videoData.authorId,
       );
       const coverPath = coverFullPath ? toServablePath(coverFullPath, exportPath) : null;
 
@@ -195,15 +196,15 @@ async function main() {
       }
     }
 
-    console.log(
-      `Processed ${videoEntries.length} videos (${videosAdded} new, ${videosUpdated} updated)`
+    console.info(
+      `Processed ${videoEntries.length} videos (${videosAdded} new, ${videosUpdated} updated)`,
     );
 
     // Update sync log
     await prisma.syncLog.update({
       where: { id: syncLog.id },
       data: {
-        status: "completed",
+        status: 'completed',
         videosAdded,
         videosUpdated,
         authorsAdded,
@@ -211,16 +212,16 @@ async function main() {
       },
     });
 
-    console.log("\nImport completed successfully!");
-    console.log(`  Authors: ${authorsAdded} added`);
-    console.log(`  Videos: ${videosAdded} added, ${videosUpdated} updated`);
+    console.info('\nImport completed successfully!');
+    console.info(`  Authors: ${authorsAdded} added`);
+    console.info(`  Videos: ${videosAdded} added, ${videosUpdated} updated`);
   } catch (error) {
-    console.error("Import failed:", error);
+    console.error('Import failed:', error);
 
     await prisma.syncLog.update({
       where: { id: syncLog.id },
       data: {
-        status: "failed",
+        status: 'failed',
         errors: error instanceof Error ? error.message : String(error),
         completedAt: new Date(),
       },

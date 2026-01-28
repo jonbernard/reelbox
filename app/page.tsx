@@ -1,15 +1,17 @@
-"use client";
+'use client';
 
-import { AuthorList } from "@/app/components/AuthorList";
-import { Navigation } from "@/app/components/Navigation";
-import { VideoFeed } from "@/app/components/VideoFeed";
-import { useAuthors } from "@/app/hooks/useAuthors";
-import { useVideoFeed } from "@/app/hooks/useVideoFeed";
-import type { Author, FeedType } from "@/app/lib/types";
-import { useState } from "react";
+import { useState } from 'react';
+
+import type { Author, FeedType } from '@/app/lib/types';
+
+import { AuthorList } from '@/app/components/AuthorList';
+import { Navigation } from '@/app/components/Navigation';
+import { VideoFeed } from '@/app/components/VideoFeed';
+import { useAuthors } from '@/app/hooks/useAuthors';
+import { useVideoFeed } from '@/app/hooks/useVideoFeed';
 
 export default function Home() {
-  const [feedType, setFeedType] = useState<FeedType>("liked");
+  const [feedType, setFeedType] = useState<FeedType>('liked');
   const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
   const [showAuthorList, setShowAuthorList] = useState(false);
 
@@ -22,7 +24,7 @@ export default function Home() {
 
   const handleTypeChange = (type: FeedType) => {
     setFeedType(type);
-    if (type !== "following") {
+    if (type !== 'following') {
       setSelectedAuthor(null);
     }
   };

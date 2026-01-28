@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { Author, FeedType } from "@/app/lib/types";
+import type { Author, FeedType } from '@/app/lib/types';
 
 interface NavigationProps {
   currentType: FeedType;
@@ -11,10 +11,10 @@ interface NavigationProps {
 }
 
 const tabs: { type: FeedType; label: string }[] = [
-  { type: "liked", label: "Liked" },
-  { type: "favorite", label: "Favorites" },
-  { type: "following", label: "Following" },
-  { type: "all", label: "All" },
+  { type: 'following', label: 'Following' },
+  { type: 'liked', label: 'Liked' },
+  { type: 'favorite', label: 'Favorites' },
+  { type: 'all', label: 'All' },
 ];
 
 export function Navigation({
@@ -25,80 +25,87 @@ export function Navigation({
   onOpenAuthorList,
 }: NavigationProps) {
   return (
-    <nav className="fixed left-0 right-0 top-0 z-20 bg-black/80 backdrop-blur-sm safe-area-top">
-      <div className="flex items-center justify-center gap-1 px-2 py-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.type}
-            type="button"
-            onClick={() => {
-              onTypeChange(tab.type);
-              if (tab.type !== "following") {
-                onAuthorSelect(null);
-              }
-            }}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              currentType === tab.type
-                ? "bg-white text-black"
-                : "text-gray-300 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Author filter for Following tab */}
-      {currentType === "following" && (
-        <div className="flex items-center justify-center gap-2 border-t border-white/10 px-4 py-2">
-          <button
-            type="button"
-            onClick={() => onAuthorSelect(null)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              !selectedAuthor
-                ? "bg-white/20 text-white"
-                : "text-gray-400 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            All Creators
-          </button>
-
-          {selectedAuthor && (
-            <span className="flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white">
-              @{selectedAuthor.uniqueId}
-              <button
-                type="button"
-                onClick={() => onAuthorSelect(null)}
-                className="hover:text-gray-300"
-                aria-label="Clear filter"
-              >
-                <svg
-                  className="h-3 w-3"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
+    <nav className="fixed left-0 right-0 top-0 z-50 safe-area-top">
+      {/* TikTok-like top gradient overlay */}
+      <div className="bg-linear-to-b from-black/80 via-black/40 to-transparent backdrop-blur-[6px]">
+        <div className="mx-auto flex max-w-3xl items-center justify-center px-3 py-2">
+          {/* Center: text tabs with active underline */}
+          <div className="relative flex items-center gap-6">
+            {tabs.map((tab) => {
+              const isActive = currentType === tab.type;
+              return (
+                <button
+                  key={tab.type}
+                  type="button"
+                  onClick={() => {
+                    onTypeChange(tab.type);
+                    if (tab.type !== 'following') {
+                      onAuthorSelect(null);
+                    }
+                  }}
+                  className={`relative px-1 py-2 text-[13px] font-semibold tracking-wide transition ${
+                    isActive ? 'text-white' : 'text-white/65 hover:text-white'
+                  }`}>
+                  {tab.label}
+                  <span
+                    className={`absolute bottom-1 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-white transition-all ${
+                      isActive ? 'w-6 opacity-100' : 'w-0 opacity-0'
+                    }`}
                   />
-                </svg>
-              </button>
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={onOpenAuthorList}
-            className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20"
-          >
-            Browse Creators
-          </button>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
+
+        {/* Following: creator chip row */}
+        {currentType === 'following' && (
+          <div className="mx-auto flex max-w-3xl items-center justify-center gap-2 px-3 pb-2">
+            <button
+              type="button"
+              onClick={() => onAuthorSelect(null)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                selectedAuthor
+                  ? 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                  : 'bg-white/20 text-white'
+              }`}>
+              All Creators
+            </button>
+
+            {selectedAuthor && (
+              <span className="flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                @{selectedAuthor.uniqueId}
+                <button
+                  type="button"
+                  onClick={() => onAuthorSelect(null)}
+                  className="text-white/80 transition hover:text-white"
+                  aria-label="Clear filter">
+                  <svg
+                    className="h-3 w-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </span>
+            )}
+
+            <button
+              type="button"
+              onClick={onOpenAuthorList}
+              className="rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white">
+              Browse
+            </button>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

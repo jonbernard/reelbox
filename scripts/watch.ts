@@ -1,13 +1,16 @@
-import * as path from "node:path";
-import { PrismaClient } from "@prisma/client";
-import { watch } from "chokidar";
+import * as path from 'node:path';
+
+import { PrismaClient } from '@prisma/client';
+import { watch } from 'chokidar';
+
 import {
   type AuthorData,
-  type VideoData,
+  findAvatarPath,
   findCoverPath,
   parseMyfaveTTExport,
   toServablePath,
-} from "./parse-myfavett";
+  type VideoData,
+} from './parse-myfavett';
 
 const prisma = new PrismaClient();
 
@@ -23,14 +26,14 @@ async function syncNewVideo(videoId: string, exportPath: string, videoFilePath: 
     // Get video metadata
     const videoData = data.videos[videoId] as VideoData | undefined;
     if (!videoData) {
-      console.log(`  No metadata found for video ${videoId}, skipping`);
+      console.info(`  No metadata found for video ${videoId}, skipping`);
       return false;
     }
 
     // Determine video type from path
-    const isLiked = videoFilePath.includes("/Likes/");
-    const isFavorite = videoFilePath.includes("/Favorites/");
-    const isFollowing = videoFilePath.includes("/Following/") && !isLiked && !isFavorite;
+    const isLiked = videoFilePath.includes('/Likes/');
+    const isFavorite = videoFilePath.includes('/Favorites/');
+    const isFollowing = videoFilePath.includes('/Following/') && !isLiked && !isFavorite;
 
     const videoPath = toServablePath(videoFilePath, exportPath);
 
@@ -40,7 +43,7 @@ async function syncNewVideo(videoId: string, exportPath: string, videoFilePath: 
       videoId,
       isLiked,
       isFavorite,
-      videoData.authorId
+      videoData.authorId,
     );
     const coverPath = coverFullPath ? toServablePath(coverFullPath, exportPath) : null;
 
@@ -56,6 +59,8 @@ async function syncNewVideo(videoId: string, exportPath: string, videoFilePath: 
     if (!authorExists && authorData) {
       const uniqueIds = authorData.uniqueIds || [];
       const nicknames = authorData.nicknames || [];
+      const avatarFullPath = findAvatarPath(exportPath, videoData.authorId);
+      const avatarPath = avatarFullPath ? toServablePath(avatarFullPath, exportPath) : null;
 
       await prisma.author.create({
         data: {
@@ -68,11 +73,12 @@ async function syncNewVideo(videoId: string, exportPath: string, videoFilePath: 
           heartCount: authorData.heartCount ? BigInt(authorData.heartCount) : null,
           videoCount: authorData.videoCount,
           signature: authorData.signature,
+          avatarPath,
           isPrivate: authorData.privateAccount || false,
           isFollowing,
         },
       });
-      console.log(`  Created author: ${uniqueIds[0] || videoData.authorId}`);
+      console.info(`  Created author: ${uniqueIds[0] || videoData.authorId}`);
     }
 
     // Check if video already exists
@@ -91,7 +97,7 @@ async function syncNewVideo(videoId: string, exportPath: string, videoFilePath: 
           isFollowing: existingVideo.isFollowing || isFollowing,
         },
       });
-      console.log(`  Updated video: ${videoId}`);
+      console.info(`  Updated video: ${videoId}`);
       return true;
     }
 
@@ -114,7 +120,7 @@ async function syncNewVideo(videoId: string, exportPath: string, videoFilePath: 
       },
     });
 
-    console.log(`  Added video: ${videoId}`);
+    console.info(`  Added video: ${videoId}`);
     return true;
   } catch (error) {
     console.error(`  Error syncing video ${videoId}:`, error);
@@ -126,20 +132,20 @@ async function main() {
   const exportPath = process.env.MYFAVETT_EXPORT_PATH;
 
   if (!exportPath) {
-    console.error("Error: MYFAVETT_EXPORT_PATH environment variable is not set");
+    console.error('Error: MYFAVETT_EXPORT_PATH environment variable is not set');
     process.exit(1);
   }
 
-  console.log(`Watching for new videos in: ${exportPath}`);
+  console.info(`Watching for new videos in: ${exportPath}`);
 
   const videoPaths = [
-    path.join(exportPath, "data", "Likes", "videos"),
-    path.join(exportPath, "data", "Favorites", "videos"),
-    path.join(exportPath, "data", "Following", "*", "videos"),
+    path.join(exportPath, 'data', 'Likes', 'videos'),
+    path.join(exportPath, 'data', 'Favorites', 'videos'),
+    path.join(exportPath, 'data', 'Following', '*', 'videos'),
   ];
 
   const watcher = watch(videoPaths, {
-    ignored: /(^|[\/\\])\../,
+    ignored: /(^|[/\\])\../,
     persistent: true,
     ignoreInitial: true,
     awaitWriteFinish: {
@@ -150,11 +156,11 @@ async function main() {
 
   const pendingVideos: Map<string, string> = new Map();
 
-  watcher.on("add", (filePath) => {
-    if (!filePath.endsWith(".mp4")) return;
+  watcher.on('add', (filePath) => {
+    if (!filePath.endsWith('.mp4')) return;
 
-    const videoId = path.basename(filePath, ".mp4");
-    console.log(`New video detected: ${videoId}`);
+    const videoId = path.basename(filePath, '.mp4');
+    console.info(`New video detected: ${videoId}`);
     pendingVideos.set(videoId, filePath);
 
     // Debounce processing
@@ -166,12 +172,12 @@ async function main() {
       const videosToSync = new Map(pendingVideos);
       pendingVideos.clear();
 
-      console.log(`\nSyncing ${videosToSync.size} new video(s)...`);
+      console.info(`\nSyncing ${videosToSync.size} new video(s)...`);
 
       const syncLog = await prisma.syncLog.create({
         data: {
-          type: "watch",
-          status: "started",
+          type: 'watch',
+          status: 'started',
         },
       });
 
@@ -187,26 +193,26 @@ async function main() {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
         data: {
-          status: failed > 0 ? "completed" : "completed",
+          status: failed > 0 ? 'completed' : 'completed',
           videosAdded: added,
           errors: failed > 0 ? `${failed} videos failed to sync` : null,
           completedAt: new Date(),
         },
       });
 
-      console.log(`Sync complete: ${added} added, ${failed} failed\n`);
+      console.info(`Sync complete: ${added} added, ${failed} failed\n`);
     }, DEBOUNCE_MS);
   });
 
-  watcher.on("error", (error) => {
-    console.error("Watcher error:", error);
+  watcher.on('error', (error) => {
+    console.error('Watcher error:', error);
   });
 
-  console.log("Watch mode active. Press Ctrl+C to stop.\n");
+  console.info('Watch mode active. Press Ctrl+C to stop.\n');
 
   // Handle graceful shutdown
-  process.on("SIGINT", async () => {
-    console.log("\nShutting down...");
+  process.on('SIGINT', async () => {
+    console.info('\nShutting down...');
     await watcher.close();
     await prisma.$disconnect();
     process.exit(0);

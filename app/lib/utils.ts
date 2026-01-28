@@ -2,7 +2,7 @@
  * Format a number with K/M suffix
  */
 export function formatCount(count: number | null | undefined): string {
-  if (count == null) return "";
+  if (count == null) return '';
 
   if (count >= 1_000_000) {
     return `${(count / 1_000_000).toFixed(1)}M`;
@@ -34,7 +34,7 @@ export function formatRelativeDate(date: Date): string {
   if (days > 0) return `${days}d ago`;
   if (hours > 0) return `${hours}h ago`;
   if (minutes > 0) return `${minutes}m ago`;
-  return "just now";
+  return 'just now';
 }
 
 /**

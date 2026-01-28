@@ -1,8 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker
-  output: "standalone",
+  output: 'standalone',
 
   // Disable image optimization for self-hosted (we serve raw images)
   images: {
@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable server actions
     serverActions: {
-      bodySizeLimit: "2mb",
+      bodySizeLimit: '2mb',
     },
   },
 };

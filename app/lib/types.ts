@@ -62,4 +62,4 @@ export interface SyncLog {
   completedAt: string | null;
 }
 
-export type FeedType = "all" | "liked" | "favorite" | "following";
+export type FeedType = 'all' | 'liked' | 'favorite' | 'following';

@@ -1,11 +1,12 @@
-import { prisma } from "@/app/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+
+import { prisma } from '@/app/lib/prisma';
 
 export async function GET() {
   try {
     // Get the most recent sync logs
     const syncLogs = await prisma.syncLog.findMany({
-      orderBy: { startedAt: "desc" },
+      orderBy: { startedAt: 'desc' },
       take: 10,
     });
 
@@ -33,7 +34,7 @@ export async function GET() {
       recentSyncs: syncLogs,
     });
   } catch (error) {
-    console.error("Error fetching sync status:", error);
-    return NextResponse.json({ error: "Failed to fetch sync status" }, { status: 500 });
+    console.error('Error fetching sync status:', error);
+    return NextResponse.json({ error: 'Failed to fetch sync status' }, { status: 500 });
   }
 }
