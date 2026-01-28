@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Author {
+  id            String   @id // TikTok author ID
+  uniqueId      String   // Current username
+  uniqueIds     String[] // Historical usernames
+  nickname      String   // Display name
+  nicknames     String[] // Historical display names
+  followerCount Int?
+  heartCount    BigInt?
+  videoCount    Int?
+  signature     String?  // Bio
+  avatarPath    String?  // Path to avatar image
+  isPrivate     Boolean  @default(false)
+  isFollowing   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  videos        Video[]
+}
+
+model Video {
+  id          String   @id // TikTok video ID
+  authorId    String
+  author      Author   @relation(fields: [authorId], references: [id])
+  description String?  // Caption/text
+  createTime  DateTime // Original post time
+  diggCount   Int?     // Like count
+  playCount   Int?     // View count
+  audioId     String?
+  size        String?  // File size string
+  videoPath   String   // Path to video file
+  coverPath   String?  // Path to cover image
+  isLiked     Boolean  @default(false)
+  isFavorite  Boolean  @default(false)
+  isFollowing Boolean  @default(false) // From a followed creator
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([isLiked])
+  @@index([isFavorite])
+  @@index([isFollowing])
+  @@index([createTime])
+}
+
+model SyncLog {
+  id            Int       @id @default(autoincrement())
+  type          String    // 'manual' | 'watch'
+  status        String    // 'started' | 'completed' | 'failed'
+  videosAdded   Int       @default(0)
+  videosUpdated Int       @default(0)
+  authorsAdded  Int       @default(0)
+  errors        String?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+}

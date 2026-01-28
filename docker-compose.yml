@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: scroll-viewer-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
+      - VIDEO_BASE_PATH=/app/videos
+      - MYFAVETT_EXPORT_PATH=/app/videos
+    volumes:
+      # Mount your myfaveTT export folder here
+      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/app/videos:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - scroll-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: scroll-viewer-db
+    environment:
+      - POSTGRES_USER=scroll
+      - POSTGRES_PASSWORD=scroll
+      - POSTGRES_DB=scroll_viewer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scroll -d scroll_viewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - scroll-network
+
+  # Optional: Run migrations/import as a one-off service
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    container_name: scroll-viewer-migrate
+    environment:
+      - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
+      - VIDEO_BASE_PATH=/app/videos
+      - MYFAVETT_EXPORT_PATH=/app/videos
+    volumes:
+      - /Users/jonbernard/Development/scroll-viewer/ttoutput:/app/videos:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - setup
+    networks:
+      - scroll-network
+
+networks:
+  scroll-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
