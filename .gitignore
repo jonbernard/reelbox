@@ -45,6 +45,3 @@ next-env.d.ts
 
 # test data
 /ttoutput
-
-# prisma
-/prisma/migrations
