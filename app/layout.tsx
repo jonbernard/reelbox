@@ -14,13 +14,13 @@ const appMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Scroll Viewer',
-  description: 'TikTok-style video viewer for your archived videos',
+  title: 'Reelbox',
+  description: 'Self-hosted video viewer for your archived videos',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Scroll Viewer',
+    title: 'Reelbox',
   },
 };
 

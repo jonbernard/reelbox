@@ -1,11 +1,11 @@
 services:
   app:
-    image: ghcr.io/jonbernard/scroll-viewer:latest
-    container_name: scroll-viewer-app
+    image: ghcr.io/jonbernard/reelbox:latest
+    container_name: reelbox-app
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
+      - DATABASE_URL=postgresql://reelbox:reelbox@db:5432/reelbox
       - VIDEO_BASE_PATH=/videos
       - MYFAVETT_EXPORT_PATH=/videos
     volumes:
@@ -15,14 +15,14 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - scroll-network
+      - reelbox-network
 
   watcher:
-    image: ghcr.io/jonbernard/scroll-viewer:latest
-    container_name: scroll-viewer-watcher
+    image: ghcr.io/jonbernard/reelbox:latest
+    container_name: reelbox-watcher
     command: ["npx", "tsx", "scripts/watch.ts"]
     environment:
-      - DATABASE_URL=postgresql://scroll:scroll@db:5432/scroll_viewer
+      - DATABASE_URL=postgresql://reelbox:reelbox@db:5432/reelbox
       - VIDEO_BASE_PATH=/videos
       - MYFAVETT_EXPORT_PATH=/videos
     volumes:
@@ -32,28 +32,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - scroll-network
+      - reelbox-network
 
   db:
     image: postgres:16-alpine
-    container_name: scroll-viewer-db
+    container_name: reelbox-db
     environment:
-      - POSTGRES_USER=scroll
-      - POSTGRES_PASSWORD=scroll
-      - POSTGRES_DB=scroll_viewer
+      - POSTGRES_USER=reelbox
+      - POSTGRES_PASSWORD=reelbox
+      - POSTGRES_DB=reelbox
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scroll -d scroll_viewer"]
+      test: ["CMD-SHELL", "pg_isready -U reelbox -d reelbox"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
     networks:
-      - scroll-network
+      - reelbox-network
 
 networks:
-  scroll-network:
+  reelbox-network:
     driver: bridge
     ipam:
       config:

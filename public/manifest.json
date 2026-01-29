@@ -1,7 +1,7 @@
 {
-  "name": "Scroll Viewer",
-  "short_name": "ScrollView",
-  "description": "TikTok-style video viewer for your archived videos",
+  "name": "Reelbox",
+  "short_name": "Reelbox",
+  "description": "Self-hosted video viewer for your archived videos",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

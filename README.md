@@ -1,4 +1,4 @@
-# Scroll Viewer
+# Reelbox
 
 A self-hosted vertical video viewer for browsing [myfaveTT](https://github.com/myfaveTT) archives. Scroll through your saved videos in a mobile-friendly, full-screen feed with filtering, creator browsing, and keyboard navigation.
 
@@ -41,8 +41,8 @@ A self-hosted vertical video viewer for browsing [myfaveTT](https://github.com/m
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/jonbernard/scroll-viewer.git
-cd scroll-viewer
+git clone https://github.com/jonbernard/reelbox.git
+cd reelbox
 ```
 
 2. **Install dependencies:**
@@ -60,7 +60,7 @@ cp .env.example .env
 Edit `.env` with your values:
 
 ```
-DATABASE_URL=postgresql://scroll:scroll@localhost:5432/scroll_viewer
+DATABASE_URL=postgresql://reelbox:reelbox@localhost:5432/reelbox
 VIDEO_BASE_PATH=/path/to/myfavett/export
 MYFAVETT_EXPORT_PATH=/path/to/myfavett/export
 ```
@@ -112,7 +112,7 @@ This starts three services:
 | `watcher` | Monitors export directory for new videos and auto-imports |
 | `db`      | PostgreSQL 16 with persistent volume                      |
 
-Database migrations run automatically on each container start via the entrypoint.
+Database migrations and an initial import run automatically on each container start via the entrypoint.
 
 3. **Run a one-off import** (if needed):
 
@@ -130,18 +130,18 @@ docker compose run --rm app npx tsx scripts/import.ts
 ### Building the Image Locally
 
 ```bash
-docker build -t scroll-viewer .
+docker build -t reelbox .
 ```
 
 Run it standalone (requires an external PostgreSQL instance):
 
 ```bash
 docker run -p 3000:3000 \
-  -e DATABASE_URL=postgresql://user:pass@host:5432/scroll_viewer \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/reelbox \
   -e VIDEO_BASE_PATH=/videos \
   -e MYFAVETT_EXPORT_PATH=/videos \
   -v /path/to/export:/videos:ro \
-  scroll-viewer
+  reelbox
 ```
 
 ## CI/CD
@@ -150,9 +150,8 @@ The GitHub Actions workflow runs on every push and pull request to `main`:
 
 - **Lint** — Biome check
 - **Type Check** — `tsc --noEmit`
-- **Build** — Next.js production build
 
-On push to `main` (after all checks pass), the workflow builds and pushes the Docker image to `ghcr.io/jonbernard/scroll-viewer` tagged with both `latest` and the git SHA.
+On push to `main` (after all checks pass), the workflow builds and pushes the Docker image to `ghcr.io/jonbernard/reelbox` tagged with both `latest` and the git SHA.
 
 ## Scripts
 
@@ -217,6 +216,25 @@ export/
             ├── videos/
             └── covers/
 ```
+
+## Troubleshooting
+
+### Connection refused / reset when accessing the app
+
+If the app container logs show "Ready" but you can't connect from the host, Docker may have assigned a network subnet that overlaps with your LAN. Check the container's network with `docker inspect <container>` — if the `Gateway` or `IPAddress` falls within your local network range (e.g., `192.168.x.x`), there's a conflict.
+
+Fix this by specifying a non-conflicting subnet in `docker-compose.yml`:
+
+```yaml
+networks:
+  reelbox-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.100.0.0/24
+```
+
+You'll need to tear down the stack and redeploy for the network change to take effect.
 
 ## License
 
