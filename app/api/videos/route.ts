@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Number.parseInt(searchParams.get('limit') || '20', 10), 50);
 
   try {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { isHidden: false };
 
     // Filter by type
     switch (type) {

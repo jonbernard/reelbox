@@ -38,18 +38,21 @@ A self-hosted vertical video viewer for browsing [myfaveTT](https://github.com/m
 
 ## Quick Start (Local Development)
 
-1. **Clone the repository:**
+1. **Clone and install:**
 
 ```bash
 git clone https://github.com/jonbernard/reelbox.git
 cd reelbox
-```
-
-2. **Install dependencies:**
-
-```bash
 npm install
 ```
+
+2. **Start the database:**
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+This starts a PostgreSQL 16 container on `localhost:5432`.
 
 3. **Configure environment variables:**
 
@@ -57,7 +60,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Edit `.env` — set `VIDEO_BASE_PATH` and `MYFAVETT_EXPORT_PATH` to your myfaveTT export folder:
 
 ```
 DATABASE_URL=postgresql://reelbox:reelbox@localhost:5432/reelbox
@@ -65,26 +68,23 @@ VIDEO_BASE_PATH=/path/to/myfavett/export
 MYFAVETT_EXPORT_PATH=/path/to/myfavett/export
 ```
 
-4. **Set up the database:**
+4. **Set up the database and import:**
 
 ```bash
 npx prisma generate
 npx prisma db push
-```
-
-5. **Import your myfaveTT archive:**
-
-```bash
 npm run import
 ```
 
-6. **Start the dev server:**
+5. **Start the dev server:**
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+To stop the database: `docker compose -f docker-compose.dev.yml down` (data persists in a volume). To wipe it: add `-v`.
 
 ## Docker Deployment
 

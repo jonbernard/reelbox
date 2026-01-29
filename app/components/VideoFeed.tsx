@@ -14,6 +14,7 @@ interface VideoFeedProps {
   isLoadingMore: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
+  onHideVideo: (videoId: string) => void;
   basePath: string;
   initialVideoId?: string;
   pageSize?: number;
@@ -25,6 +26,7 @@ export function VideoFeed({
   isLoadingMore,
   hasMore,
   onLoadMore,
+  onHideVideo,
   basePath,
   initialVideoId,
   pageSize = 5,
@@ -234,6 +236,11 @@ export function VideoFeed({
           prevIndex,
         });
         target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        const activeItem = itemRefs.current[activeIndex];
+        const playButton = activeItem?.querySelector<HTMLButtonElement>('button');
+        playButton?.click();
       } else if (e.key === 'm') {
         debugLog('feed', 'keydown mute toggle', { key: e.key });
         setIsMuted((prev) => !prev);
@@ -295,6 +302,7 @@ export function VideoFeed({
             isFirst={index === 0}
             isMuted={isMuted}
             onMuteToggle={handleMuteToggle}
+            onHide={() => onHideVideo(video.id)}
           />
         </div>
       ))}

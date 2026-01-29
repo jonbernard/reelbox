@@ -28,6 +28,7 @@ export interface Video {
   isLiked: boolean;
   isFavorite: boolean;
   isFollowing: boolean;
+  isHidden: boolean;
 }
 
 export interface VideosResponse {

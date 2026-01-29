@@ -9,6 +9,14 @@ type VideoWithAuthorSummary = Omit<Video, 'author' | 'createTime'> & {
   createTime: string;
 };
 
+export async function getImportStatus(): Promise<boolean> {
+  const activeImport = await prisma.syncLog.findFirst({
+    where: { type: 'manual', status: 'started' },
+    orderBy: { startedAt: 'desc' },
+  });
+  return !!activeImport;
+}
+
 export async function getFollowingAuthors(): Promise<AuthorSummary[]> {
   const authors = await prisma.author.findMany({
     where: { isFollowing: true },
@@ -49,7 +57,7 @@ export async function getInitialVideos({
   authorId?: string | null;
   limit?: number;
 }): Promise<VideosResponse> {
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { isHidden: false };
 
   switch (type) {
     case 'liked':
@@ -108,6 +116,7 @@ export async function getInitialVideos({
     isLiked: v.isLiked,
     isFavorite: v.isFavorite,
     isFollowing: v.isFollowing,
+    isHidden: v.isHidden,
   }));
 
   return { videos, nextCursor };

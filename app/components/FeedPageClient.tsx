@@ -18,7 +18,7 @@ export function FeedPageClient({
   initialVideoId?: string | null;
   initial: VideosResponse;
 }) {
-  const { videos, isLoading, isLoadingMore, hasMore, loadMore } = useVideoFeed({
+  const { videos, isLoading, isLoadingMore, hasMore, loadMore, hideVideo } = useVideoFeed({
     type,
     authorId,
     limit: 5,
@@ -35,6 +35,7 @@ export function FeedPageClient({
       basePath={basePath}
       initialVideoId={initialVideoId ?? undefined}
       pageSize={5}
+      onHideVideo={hideVideo}
     />
   );
 }

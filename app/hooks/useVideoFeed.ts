@@ -72,6 +72,20 @@ export function useVideoFeed({ type, authorId, limit = 20, initial }: UseVideoFe
     }
   }, [fetchVideos, hasMore, isLoadingMore]);
 
+  const hideVideo = useCallback(async (videoId: string) => {
+    setVideos((prev) => prev.filter((v) => v.id !== videoId));
+
+    try {
+      await fetch(`/api/videos/${videoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isHidden: true }),
+      });
+    } catch (err) {
+      console.error('Failed to hide video:', err);
+    }
+  }, []);
+
   // Reset and reload when type or authorId changes
   useEffect(() => {
     if (initial && lastInitialKeyRef.current !== key) {
@@ -94,6 +108,7 @@ export function useVideoFeed({ type, authorId, limit = 20, initial }: UseVideoFe
     error,
     hasMore,
     loadMore,
+    hideVideo,
     refresh: loadInitial,
   };
 }
